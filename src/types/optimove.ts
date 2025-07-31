@@ -7,7 +7,6 @@ export interface Brand {
 export interface Product {
   code: string;
   name: string;
-  brandCode: string;
   description?: string;
 }
 
