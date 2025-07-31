@@ -11,21 +11,21 @@ export const mockBrands: Brand[] = [
 // Mock Products by Brand
 export const mockProducts: Record<string, Product[]> = {
   BMW: [
-    { code: 'BMW_SALES', name: 'BMW Sales', brandCode: 'BMW' },
-    { code: 'BMW_SERVICE', name: 'BMW Service', brandCode: 'BMW' },
-    { code: 'BMW_PARTS', name: 'BMW Parts', brandCode: 'BMW' }
+    { code: 'BMW_SALES', name: 'BMW Sales' },
+    { code: 'BMW_SERVICE', name: 'BMW Service'},
+    { code: 'BMW_PARTS', name: 'BMW Parts'}
   ],
   MINI: [
-    { code: 'MINI_SALES', name: 'MINI Sales', brandCode: 'MINI' },
-    { code: 'MINI_SERVICE', name: 'MINI Service', brandCode: 'MINI' }
+    { code: 'MINI_SALES', name: 'MINI Sales'},
+    { code: 'MINI_SERVICE', name: 'MINI Service'}
   ],
   RR: [
-    { code: 'RR_SALES', name: 'Rolls-Royce Sales', brandCode: 'RR' },
-    { code: 'RR_SERVICE', name: 'Rolls-Royce Service', brandCode: 'RR' }
+    { code: 'RR_SALES', name: 'Rolls-Royce Sales'},
+    { code: 'RR_SERVICE', name: 'Rolls-Royce Service'}
   ],
   BMW_MC: [
-    { code: 'MC_SALES', name: 'Motorrad Sales', brandCode: 'BMW_MC' },
-    { code: 'MC_SERVICE', name: 'Motorrad Service', brandCode: 'BMW_MC' }
+    { code: 'MC_SALES', name: 'Motorrad Sales'},
+    { code: 'MC_SERVICE', name: 'Motorrad Service'}
   ]
 };
 

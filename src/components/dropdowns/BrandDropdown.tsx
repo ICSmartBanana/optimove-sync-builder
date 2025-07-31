@@ -15,21 +15,30 @@ export const BrandDropdown = ({ selectedBrand, onBrandSelect, disabled }: BrandD
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const loadBrands = async () => {
-      setIsLoading(true);
-      try {
-        const brandsData = await optimoveApi.getBrands();
-        setBrands(brandsData);
-      } catch (error) {
-        console.error('Failed to load brands:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+ useEffect(() => {
+  const loadBrands = async () => {
+    setIsLoading(true);
+    try {
+      const brandStrings = await optimoveApi.getBrands(); // string[]
+      
+      // Convert to Brand[]
+      const brandsData: Brand[] = brandStrings.map((b) => ({
+        code: b,
+        name: b,
+        description: '', // or leave as undefined
+      }));
 
-    loadBrands();
-  }, []);
+      setBrands(brandsData); // ✅ Now matches your expected Brand[]
+    } catch (error) {
+      console.error('Failed to load brands:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadBrands();
+}, []);
+
 
   const handleValueChange = (value: string) => {
     if (value === 'none') {
