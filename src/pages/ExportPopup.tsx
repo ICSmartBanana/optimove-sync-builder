@@ -192,6 +192,9 @@ export const ExportPopup = () => {
             onExportSingle={exportSingle}
             onConstructPreviewUrl={constructPreviewUrl}
             isLoading={isLoading}
+            selectedBrand={selectedBrand}
+            selectedProduct={selectedProduct}
+            mapping={mapping}
           />
         </div>
 

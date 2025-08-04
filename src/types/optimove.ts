@@ -46,18 +46,27 @@ export interface CombinationGridRow {
 }
 
 export interface ExportRequest {
-  itemId: string;
+  mailingItemId: string;
+  templateName: string;
+  subject: string;
+  html: string;
+  plainText: string;
+  fromName: string;
+  replyToAddressID: number;
+  fromEmailAddressID: number;
+  folderID: number;
+  brandId: number;
   language: string;
-  brandCode: string;
-  productCode: string;
-  mapping: Mapping;
+  mailingSite: string;
+  brandName: string;
+  productName: string;
 }
 
 export interface ExportResponse {
   success: boolean;
   templateId?: string;
   message: string;
-  isUpdate: boolean;
+  //isUpdate: boolean;
 }
 
 export interface OptimoveState {

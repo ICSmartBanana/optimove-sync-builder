@@ -207,14 +207,14 @@ export const exportToOptimove = (itemId: string, languageCode: string): Promise<
           success: true,
           templateId: `template_${itemId}_${languageCode}_updated`,
           message: `Template updated successfully for ${itemId} (${languageCode})`,
-          isUpdate: true
+          //isUpdate: true
         });
       } else {
         resolve({
           success: true,
           templateId: `template_${itemId}_${languageCode}_new`,
           message: `New template created successfully for ${itemId} (${languageCode})`,
-          isUpdate: false
+          //isUpdate: false
         });
       }
     }, 800);

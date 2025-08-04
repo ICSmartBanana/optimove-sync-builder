@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { optimoveApi } from '@/services/optimoveApi';
-import { Brand, Product, MailingItem, Language, CombinationGridRow, OptimoveState } from '@/types/optimove';
+import { Brand, Product, MailingItem, Language, CombinationGridRow, OptimoveState, ExportRequest } from '@/types/optimove';
 import { useToast } from '@/hooks/use-toast';
 
 export const useOptimoveExport = () => {
@@ -151,13 +151,13 @@ export const useOptimoveExport = () => {
     });
   }, [toast]);
 
-  const exportSingle = useCallback(async (itemId: string, languageCode: string) => {
+  const exportSingle = useCallback(async (request: ExportRequest) => {
     setLoading(true);
     try {
-      const result = await optimoveApi.exportToOptimove(itemId, languageCode);
+      const result = await optimoveApi.exportToOptimove(request);
       
       toast({
-        title: result.isUpdate ? "Template Updated" : "Template Created",
+        title: "Template exported",//result.isUpdate ? "Template Updated" : "Template Created",
         description: result.message,
         variant: result.success ? "default" : "destructive"
       });
@@ -195,7 +195,7 @@ export const useOptimoveExport = () => {
       for (const combination of state.combinations) {
         for (const language of combination.selectedLanguages) {
           try {
-            await optimoveApi.exportToOptimove(combination.mailingItem.id, language.code);
+            ///await optimoveApi.exportToOptimove(combination.mailingItem.id, language.code);
             successCount++;
           } catch (error) {
             errorCount++;

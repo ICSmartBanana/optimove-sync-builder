@@ -8,7 +8,7 @@ import {
   exportToOptimove as mockExportToOptimove
 } from '@/mock/optimoveMockApi';
 
-import { Brand, Product, Mapping, MailingItem, Language, ExportResponse } from '@/types/optimove';
+import { Brand, Product, Mapping, MailingItem, Language, ExportResponse, ExportRequest } from '@/types/optimove';
 
 // API Service Layer - Easy to swap for real APIs
 export class OptimoveApiService {
@@ -150,13 +150,32 @@ export class OptimoveApiService {
   }
 }
 
-
   async templateExists(itemId: string, languageCode: string): Promise<boolean> {
     return mockTemplateIdExists(itemId, languageCode);
   }
 
-  async exportToOptimove(itemId: string, languageCode: string): Promise<ExportResponse> {
-    return mockExportToOptimove(itemId, languageCode);
+  async exportToOptimove(payload: ExportRequest): Promise<ExportResponse> {
+
+    console.log('[ApiClient] Sending ExportToOptimove request:', payload);
+
+    const response = await fetch('/sitecore/api/email-export/export', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add Authorization header if required
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[ApiClient] ExportToOptimove failed:', errorText);
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    const result: ExportResponse = await response.json();
+    console.log('[ApiClient] ExportToOptimove succeeded:', result);
+    return result;
   }
 
   // Utility method to construct preview URL

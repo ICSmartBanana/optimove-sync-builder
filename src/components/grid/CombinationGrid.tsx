@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CombinationGridRow, Language } from '@/types/optimove';
+import { Brand, CombinationGridRow, ExportRequest, Language, Mapping, Product } from '@/types/optimove';
 import { optimoveApi } from '@/services/optimoveApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,9 +25,12 @@ interface CombinationGridProps {
   onUpdateLanguages: (combinationId: string, languages: Language[]) => void;
   onToggleExpanded: (combinationId: string) => void;
   onRemoveCombination: (combinationId: string) => void;
-  onExportSingle: (itemId: string, languageCode: string) => Promise<any>;
+  onExportSingle: (request: ExportRequest) => Promise<any>;
   onConstructPreviewUrl: (itemId: string, languageCode: string) => string;
   isLoading?: boolean;
+  selectedBrand: Brand | null;
+  selectedProduct: Product | null;
+  mapping: Mapping | null;
 }
 
 export const CombinationGrid = ({
@@ -37,7 +40,10 @@ export const CombinationGrid = ({
   onRemoveCombination,
   onExportSingle,
   onConstructPreviewUrl,
-  isLoading = false
+  isLoading = false,
+  selectedBrand,
+  selectedProduct,
+  mapping
 }: CombinationGridProps) => {
   const { toast } = useToast();
   const [availableLanguages, setAvailableLanguages] = useState<Record<string, Language[]>>({});
@@ -88,9 +94,9 @@ export const CombinationGrid = ({
     window.open(url, '_blank');
   };
 
-  const handleExport = async (itemId: string, languageCode: string) => {
+  const handleExport = async (request: ExportRequest) => {
     try {
-      await onExportSingle(itemId, languageCode);
+      await onExportSingle(request);
     } catch (error) {
       console.error('Export failed:', error);
     }
@@ -291,7 +297,35 @@ export const CombinationGrid = ({
                               <Button
                                 variant="default"
                                 size="sm"
-                                onClick={() => handleExport(combination.mailingItem.id, language.code)}
+                                onClick={() =>{
+                                    if (!mapping || !selectedBrand || !selectedProduct) {
+                                      toast({
+                                        variant: 'destructive',
+                                        title: 'Missing configuration',
+                                        description: 'Brand, product or mapping config not available.'
+                                      });
+                                      return;
+                                    }
+                                
+                                    handleExport({
+                                      mailingItemId: combination.mailingItem.id,
+                                      templateName: combination.mailingItem.name, // 👈 populate all required fields
+                                      subject: combination.mailingItem.name,
+                                      html: "Testing... new flow !",
+                                      plainText: "...",
+                                      fromName: "CMS WIP",
+                                      replyToAddressID: 160,//mapping.replyTo,
+                                      fromEmailAddressID: 65,//</div></div>mapping.fromAddress,
+                                      folderID: 46,//</div></div>mapping.folderId,
+                                      brandId: 7,//</div>mapping.optimoveBrandId,
+                                      language: language.code,
+                                      mailingSite: mapping.mailingSite,
+                                      brandName: mapping.brandCode,
+                                      productName: mapping.productCode,
+                                    })
+
+                                  }
+                                }
                                 disabled={isLoading}
                                 className="h-8 text-xs"
                               >
