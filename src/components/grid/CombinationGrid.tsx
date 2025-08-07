@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Brand, CombinationGridRow, ExportRequest, Language, Mapping, Product } from '@/types/optimove';
+import { Brand, CombinationGridRow, EmailAddress, EmailParametersResponse, ExportRequest, Language, Mapping, Product } from '@/types/optimove';
 import { optimoveApi } from '@/services/optimoveApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ export const CombinationGrid = ({
   const { toast } = useToast();
   const [availableLanguages, setAvailableLanguages] = useState<Record<string, Language[]>>({});
   const [loadingLanguages, setLoadingLanguages] = useState<Record<string, boolean>>({});
+  const [emailParams, setEmailParams] = useState<EmailParametersResponse | null>(null);
 
   // Load available languages for each mailing item
   useEffect(() => {
@@ -77,6 +78,22 @@ export const CombinationGrid = ({
     }
   }, [combinations, availableLanguages]);
 
+  useEffect(() => {
+    const fetchEmailIds = async () => {
+      if (mapping?.optimoveBrandId) {
+        try {
+          const result = await optimoveApi.getEmailParameters(mapping.optimoveBrandId);
+          setEmailParams(result);
+        } catch (err) {
+          console.error("Failed to load email parameters from Optimove", err);
+        }
+      }
+    };
+
+    fetchEmailIds();
+  }, [mapping?.optimoveBrandId]);
+
+
   const handleLanguageToggle = (combinationId: string, language: Language, checked: boolean) => {
     const combination = combinations.find(c => c.id === combinationId);
     if (!combination) return;
@@ -93,6 +110,12 @@ export const CombinationGrid = ({
     const url = onConstructPreviewUrl(itemId, languageCode);
     window.open(url, '_blank');
   };
+
+  const resolveEmailId = (emailList: EmailAddress[], email: string): number => {
+    const found = emailList.find(e => e.Email.toLowerCase() === email.toLowerCase());
+    return found?.Id ?? 0;
+  };
+
 
   const handleExport = async (request: ExportRequest) => {
     try {
@@ -297,7 +320,7 @@ export const CombinationGrid = ({
                               <Button
                                 variant="default"
                                 size="sm"
-                                onClick={() =>{
+                                onClick={async () =>{
                                     if (!mapping || !selectedBrand || !selectedProduct) {
                                       toast({
                                         variant: 'destructive',
@@ -306,22 +329,28 @@ export const CombinationGrid = ({
                                       });
                                       return;
                                     }
-                                
-                                    handleExport({
+
+                                    const html = await optimoveApi.getMailingHtml(combination.mailingItem.id, language.code);
+                                    
+                                    console.log("🧩 Combination Object:", combination);
+                                    console.log("🗂️ Mapping Object:", mapping);
+                                    console.log("📨 Email Parameters:", emailParams);
+                                    await handleExport({
                                       mailingItemId: combination.mailingItem.id,
-                                      templateName: combination.mailingItem.name, // 👈 populate all required fields
-                                      subject: combination.mailingItem.name,
-                                      html: "Testing... new flow !",
+                                      templateName: combination.mailingItem.name + " | " + language.code, // 👈 populate all required fields
+                                      subject: combination.mailingItem.name,//combination.mailingItem.subject ---> Remove this after implementing value replacers.
+                                      html: html,
                                       plainText: "...",
                                       fromName: "CMS WIP",
-                                      replyToAddressID: 160,//mapping.replyTo,
-                                      fromEmailAddressID: 65,//</div></div>mapping.fromAddress,
-                                      folderID: 46,//</div></div>mapping.folderId,
-                                      brandId: 7,//</div>mapping.optimoveBrandId,
+                                      replyToAddressID: resolveEmailId(emailParams?.ReplyToAddresses || [], combination.mailingItem.replyToAddress),
+                                      fromEmailAddressID: resolveEmailId(emailParams?.FromEmailAddresses || [], combination.mailingItem.fromAddress),
+                                      folderID: mapping.folderId,//</div></div>mapping.folderId,
+                                      brandId: mapping.optimoveBrandId,//</div>mapping.optimoveBrandId,
                                       language: language.code,
                                       mailingSite: mapping.mailingSite,
                                       brandName: mapping.brandCode,
                                       productName: mapping.productCode,
+                                      mailType: combination.mailingItem.name
                                     })
 
                                   }

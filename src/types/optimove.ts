@@ -16,8 +16,8 @@ export interface Mapping {
   mailingSite: string;
   replyTo: string;
   fromAddress: string;
-  optimoveBrandId: string;
-  folderId: string;
+  optimoveBrandId: number;
+  folderId: number;
   emailIds: string[];
 }
 
@@ -29,6 +29,12 @@ export interface MailingItem {
   path: string;
   lastModified: string;
   isActive: boolean;
+  subject: string;
+  version: number;
+  replyToAddress: string;
+  fromAddress: string;
+  mailType: string;
+  html: string;
 }
 
 export interface Language {
@@ -60,6 +66,7 @@ export interface ExportRequest {
   mailingSite: string;
   brandName: string;
   productName: string;
+  mailType: string;
 }
 
 export interface ExportResponse {
@@ -77,4 +84,14 @@ export interface OptimoveState {
   combinations: CombinationGridRow[];
   isLoading: boolean;
   error: string | null;
+}
+
+export interface EmailAddress {
+  Id: number;
+  Email: string;
+}
+
+export interface EmailParametersResponse {
+  FromEmailAddresses: EmailAddress[];
+  ReplyToAddresses: EmailAddress[];
 }
