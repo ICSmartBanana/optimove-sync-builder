@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { MailingItem, Mapping } from '@/types/optimove';
 import { optimoveApi } from '@/services/optimoveApi';
 import { Label } from '@/components/ui/label';
-import { Loader2, Package, Calendar, CheckSquare, Square } from 'lucide-react';
+import { Loader2, Package, Calendar } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 
@@ -21,6 +21,7 @@ export const MailingItemDropdown = ({
 }: MailingItemDropdownProps) => {
   const [mailingItems, setMailingItems] = useState<MailingItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!mapping) {
@@ -54,10 +55,10 @@ export const MailingItemDropdown = ({
   };
 
   const handleSelectAll = () => {
-    if (selectedItems.length === mailingItems.length) {
+    if (selectedItems.length === filteredItems.length) {
       onItemsSelect([]);
     } else {
-      onItemsSelect(mailingItems);
+      onItemsSelect(filteredItems);
     }
   };
 
@@ -70,8 +71,14 @@ export const MailingItemDropdown = ({
   };
 
   const isDisabled = disabled || !mapping || isLoading;
-  const allSelected = mailingItems.length > 0 && selectedItems.length === mailingItems.length;
-  const someSelected = selectedItems.length > 0 && selectedItems.length < mailingItems.length;
+
+  const filteredItems = mailingItems.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.templateId?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+  );
+
+  const allSelected = filteredItems.length > 0 && selectedItems.length === filteredItems.length;
 
   return (
     <div className="space-y-3">
@@ -85,6 +92,16 @@ export const MailingItemDropdown = ({
           </Badge>
         )}
       </div>
+
+      {/* 🔍 Search Input */}
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Search by name, ID, or template..."
+        className="w-full p-2 border border-input rounded-md text-sm"
+        disabled={isDisabled}
+      />
 
       {isLoading && (
         <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
@@ -111,7 +128,7 @@ export const MailingItemDropdown = ({
         </div>
       )}
 
-      {mailingItems.length > 0 && (
+      {filteredItems.length > 0 && (
         <div className="space-y-2">
           {/* Select All Option */}
           <div className="flex items-center space-x-3 p-3 bg-secondary/50 rounded-lg border border-secondary">
@@ -125,15 +142,15 @@ export const MailingItemDropdown = ({
               htmlFor="select-all" 
               className="text-sm font-medium cursor-pointer flex-1"
             >
-              {allSelected ? 'Deselect All' : 'Select All'} ({mailingItems.length} items)
+              {allSelected ? 'Deselect All' : 'Select All'} ({filteredItems.length} items)
             </Label>
           </div>
 
           {/* Individual Items */}
           <div className="max-h-64 overflow-y-auto space-y-2 border border-border rounded-lg bg-card">
-            {mailingItems.map((item) => {
+            {filteredItems.map((item) => {
               const isSelected = selectedItems.some(selected => selected.id === item.id);
-              
+
               return (
                 <div
                   key={item.id}
@@ -149,7 +166,7 @@ export const MailingItemDropdown = ({
                     disabled={isDisabled}
                     className="mt-1"
                   />
-                  
+
                   <div className="flex-1 min-w-0">
                     <Label 
                       htmlFor={item.id} 
@@ -157,7 +174,7 @@ export const MailingItemDropdown = ({
                     >
                       {item.name}
                     </Label>
-                    
+
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-muted-foreground font-mono">
                         ID: {item.id}
@@ -168,7 +185,7 @@ export const MailingItemDropdown = ({
                         </Badge>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">

@@ -3,7 +3,7 @@ import { Brand, Product, Mapping, MailingItem, Language, ExportResponse, ExportR
 // API Service Layer - Easy to swap for real APIs
 export class OptimoveApiService {
 
-  private baseUrl = 'https://cms.test.env.works/sitecore/api/email-export';
+  private baseUrl = 'https://cms.local.env.works/sitecore/api/email-export';
   // In production, replace these with real API calls
    async getBrands(): Promise<string[]> {
   const fullUrl = `${this.baseUrl}/optimove-mapping/brands`;
