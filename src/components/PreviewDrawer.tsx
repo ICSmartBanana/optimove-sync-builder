@@ -1,31 +1,21 @@
-import { useEffect, useMemo, useRef } from "react";
+// src/components/PreviewDrawer.tsx
+import { useMemo } from "react";
 import { X } from "lucide-react";
-import { usePreviewHtml } from "@/hooks/usePreviewHtml";
+import { buildPreviewUrl } from "@/lib/previewUrl";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   itemId?: string;
   lang?: string;
-  siteBaseUrl: string; // from env/config
+  siteBaseUrl: string;
 };
 
-// Side drawer with an iframe to isolate HTML/CSS from the app
 export default function PreviewDrawer({ open, onClose, itemId, lang = "en", siteBaseUrl }: Props) {
-  const { html, loading, error } = usePreviewHtml(siteBaseUrl, itemId || "", lang);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  // Write HTML into the iframe whenever it changes
-  useEffect(() => {
-    if (!open || !iframeRef.current) return;
-    const doc = iframeRef.current.contentDocument;
-    if (!doc) return;
-    doc.open();
-    doc.write(html || "");
-    doc.close();
-  }, [open, html]);
-
-  const title = useMemo(() => (itemId ? `Preview: ${itemId}` : "Preview"), [itemId]);
+  const src = useMemo(() => {
+    if (!open || !itemId) return "about:blank";
+    return buildPreviewUrl({ siteBaseUrl, itemId, lang });
+  }, [open, itemId, lang, siteBaseUrl]);
 
   return (
     <div
@@ -35,7 +25,9 @@ export default function PreviewDrawer({ open, onClose, itemId, lang = "en", site
       aria-hidden={!open}
     >
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="font-medium text-sm truncate">{title}</div>
+        <div className="font-medium text-sm truncate">
+          {itemId ? `Preview: ${itemId} (${lang})` : "Preview"}
+        </div>
         <button
           onClick={onClose}
           className="rounded-md border px-2 py-1 text-sm hover:bg-gray-50"
@@ -45,22 +37,14 @@ export default function PreviewDrawer({ open, onClose, itemId, lang = "en", site
         </button>
       </div>
 
-      <div className="h-[calc(100%-44px)]">
-        {loading && (
-          <div className="h-full grid place-items-center text-sm text-gray-500">Loading preview…</div>
-        )}
-        {error && (
-          <div className="p-4 text-red-600 text-sm">Failed to load preview: {error}</div>
-        )}
-        {!loading && !error && (
-          <iframe
-            ref={iframeRef}
-            title="sitecore-preview"
-            className="w-full h-full border-0"
-            sandbox="allow-same-origin allow-scripts allow-forms"
-          />
-        )}
-      </div>
+      <iframe
+        key={src}                 // force reload when URL changes
+        title="sitecore-preview"
+        src={src}
+        className="w-full h-[calc(100%-44px)] border-0"
+        // No sandbox; Sitecore preview may need same cookies/scripts
+        // If your org requires sandbox, try: sandbox="allow-same-origin allow-scripts allow-forms"
+      />
     </div>
   );
 }

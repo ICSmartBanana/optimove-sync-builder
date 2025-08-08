@@ -1,3 +1,11 @@
+// add:
+import PreviewDrawer from "@/components/PreviewDrawer";
+
+const siteBaseUrl = useMemo(() => import.meta.env.VITE_CMS_BASE_URL as string, []);
+const [previewOpen, setPreviewOpen] = useState(false);
+const [previewItemId, setPreviewItemId] = useState<string | undefined>();
+const [previewLang, setPreviewLang] = useState<string>("en");
+
 import { useState, useEffect, useMemo } from 'react';
 import { Brand, CombinationGridRow, EmailAddress, EmailParametersResponse, ExportRequest, Language, Mapping, Product } from '@/types/optimove';
 import { optimoveApi } from '@/services/optimoveApi';
@@ -42,7 +50,7 @@ export const CombinationGrid = ({
   onToggleExpanded,
   onRemoveCombination,
   onExportSingle,
-  onConstructPreviewUrl,
+  onConstructPreviewUrl, // not used here but kept for API parity
   isLoading = false,
   selectedBrand,
   selectedProduct,
@@ -53,71 +61,47 @@ export const CombinationGrid = ({
   const [loadingLanguages, setLoadingLanguages] = useState<Record<string, boolean>>({});
   const [emailParams, setEmailParams] = useState<EmailParametersResponse | null>(null);
   const siteBaseUrl = useMemo(() => (import.meta as any).env.VITE_CMS_BASE_URL as string, []);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewItemId, setPreviewItemId] = useState<string | undefined>(undefined);
-  const [previewLang, setPreviewLang] = useState<string>('en');
 
-  // Load available languages for each mailing item
+  // Load languages for shown items
   useEffect(() => {
-    const loadLanguagesForItems = async () => {
-      const languagePromises = combinations.map(async (combo) => {
-        if (!availableLanguages[combo.mailingItem.id]) {
-          setLoadingLanguages(prev => ({ ...prev, [combo.mailingItem.id]: true }));
+    const load = async () => {
+      const tasks = combinations.map(async (c) => {
+        if (!availableLanguages[c.mailingItem.id]) {
+          setLoadingLanguages((p) => ({ ...p, [c.mailingItem.id]: true }));
           try {
-            const languages = await optimoveApi.getLanguages(combo.mailingItem.id);
-            setAvailableLanguages(prev => ({
-              ...prev,
-              [combo.mailingItem.id]: languages
-            }));
-          } catch (error) {
-            console.error(`Failed to load languages for ${combo.mailingItem.id}:`, error);
+            const langs = await optimoveApi.getLanguages(c.mailingItem.id);
+            setAvailableLanguages((p) => ({ ...p, [c.mailingItem.id]: langs }));
           } finally {
-            setLoadingLanguages(prev => ({ ...prev, [combo.mailingItem.id]: false }));
+            setLoadingLanguages((p) => ({ ...p, [c.mailingItem.id]: false }));
           }
         }
       });
-
-      await Promise.all(languagePromises);
+      await Promise.all(tasks);
     };
-
-    if (combinations.length > 0) {
-      loadLanguagesForItems();
-    }
+    if (combinations.length) load();
   }, [combinations, availableLanguages]);
 
+  // Load email params
   useEffect(() => {
-    const fetchEmailIds = async () => {
+    const run = async () => {
       if (mapping?.optimoveBrandId) {
         try {
-          const result = await optimoveApi.getEmailParameters(mapping.optimoveBrandId);
-          setEmailParams(result);
-        } catch (err) {
-          console.error("Failed to load email parameters from Optimove", err);
+          const res = await optimoveApi.getEmailParameters(mapping.optimoveBrandId);
+          setEmailParams(res);
+        } catch (e) {
+          console.error('Failed to load email parameters', e);
         }
       }
     };
-
-    fetchEmailIds();
+    run();
   }, [mapping?.optimoveBrandId]);
 
-
   const handleLanguageToggle = (combinationId: string, language: Language, checked: boolean) => {
-    const combination = combinations.find(c => c.id === combinationId);
-    if (!combination) return;
-
-    const currentLanguages = combination.selectedLanguages;
-    const newLanguages = checked
-      ? [...currentLanguages, language]
-      : currentLanguages.filter(l => l.code !== language.code);
-
-    onUpdateLanguages(combinationId, newLanguages);
-  };
-
-  const handlePreview = (itemId: string, languageCode: string) => {
-    // Open the in-app sliding drawer instead of a new tab
-    setPreviewItemId(itemId);
-    setPreviewLang(languageCode);
-    setPreviewOpen(true);
+    const combo = combinations.find(c => c.id === combinationId);
+    if (!combo) return;
+    const curr = combo.selectedLanguages;
+    const next = checked ? [...curr, language] : curr.filter(l => l.code !== language.code);
+    onUpdateLanguages(combinationId, next);
   };
 
   const resolveEmailId = (emailList: EmailAddress[], email: string): number => {
@@ -125,35 +109,33 @@ export const CombinationGrid = ({
     return found?.Id ?? 0;
   };
 
-
   const handleExport = async (request: ExportRequest) => {
     try {
       await onExportSingle(request);
-    } catch (error) {
-      console.error('Export failed:', error);
+    } catch (err) {
+      console.error('Export failed:', err);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+ const handlePreview = (itemId: string, languageCode: string) => {
+  setPreviewItemId(itemId);
+  setPreviewLang(languageCode);
+  setPreviewOpen(true);
+};
 
-  if (combinations.length === 0) {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+  if (!combinations.length) {
     return (
       <Card className="border-dashed border-2 border-border">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Package className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            No Items in Combinations
-          </h3>
+          <h3 className="text-lg font-medium text-foreground mb-2">No Items in Combinations</h3>
           <p className="text-sm text-muted-foreground text-center max-w-md">
-            Select mailing items from the dropdowns above and click "Add to Combinations" to start building your export list.
+            Select mailing items from the dropdowns above and click "Add to Combinations".
           </p>
         </CardContent>
       </Card>
@@ -163,9 +145,7 @@ export const CombinationGrid = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">
-          Combinations Grid
-        </h3>
+        <h3 className="text-lg font-semibold text-foreground">Combinations Grid</h3>
         <Badge variant="secondary" className="text-sm">
           {combinations.length} item{combinations.length !== 1 ? 's' : ''}
         </Badge>
@@ -186,21 +166,13 @@ export const CombinationGrid = ({
                     onClick={() => onToggleExpanded(combination.id)}
                     className="h-8 w-8 p-0"
                   >
-                    {combination.isExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
+                    {combination.isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </Button>
 
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium bg-muted text-muted-foreground px-2 py-1 rounded">
-                        #{index + 1}
-                      </span>
-                      <CardTitle className="text-base">
-                        {combination.mailingItem.name}
-                      </CardTitle>
+                      <span className="text-sm font-medium bg-muted text-muted-foreground px-2 py-1 rounded">#{index + 1}</span>
+                      <CardTitle className="text-base">{combination.mailingItem.name}</CardTitle>
                     </div>
 
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -210,27 +182,24 @@ export const CombinationGrid = ({
                         <span>{formatDate(combination.mailingItem.lastModified)}</span>
                       </div>
                       {combination.mailingItem.templateId && (
-                        <Badge variant="outline" className="text-xs">
-                          {combination.mailingItem.templateId}
-                        </Badge>
+                        <Badge variant="outline" className="text-xs">{combination.mailingItem.templateId}</Badge>
                       )}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {combination.selectedLanguages.length} language{combination.selectedLanguages.length !== 1 ? 's' : ''}
-                  </Badge>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemoveCombination(combination.id)}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {combination.selectedLanguages.length} language{combination.selectedLanguages.length !== 1 ? 's' : ''}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveCombination(combination.id)}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -253,38 +222,21 @@ export const CombinationGrid = ({
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {itemLanguages.map((language) => {
-                          const isSelected = combination.selectedLanguages.some(
-                            l => l.code === language.code
-                          );
-
+                          const isSelected = combination.selectedLanguages.some(l => l.code === language.code);
                           return (
-                            <div
-                              key={language.code}
-                              className="flex items-center space-x-3 p-2 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                            >
+                            <div key={language.code} className="flex items-center space-x-3 p-2 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors">
                               <Checkbox
                                 id={`${combination.id}_${language.code}`}
                                 checked={isSelected}
-                                onCheckedChange={(checked) =>
-                                  handleLanguageToggle(combination.id, language, checked as boolean)
-                                }
+                                onCheckedChange={(checked) => handleLanguageToggle(combination.id, language, checked as boolean)}
                                 disabled={isLoading}
                               />
-                              <Label
-                                htmlFor={`${combination.id}_${language.code}`}
-                                className="flex-1 cursor-pointer text-sm"
-                              >
+                              <Label htmlFor={`${combination.id}_${language.code}`} className="flex-1 cursor-pointer text-sm">
                                 <div className="flex items-center justify-between">
                                   <span className="font-medium">{language.displayName}</span>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground font-mono">
-                                      {language.code}
-                                    </span>
-                                    {language.isDefault && (
-                                      <Badge variant="outline" className="text-xs">
-                                        Default
-                                      </Badge>
-                                    )}
+                                    <span className="text-xs text-muted-foreground font-mono">{language.code}</span>
+                                    {language.isDefault && <Badge variant="outline" className="text-xs">Default</Badge>}
                                   </div>
                                 </div>
                               </Label>
@@ -306,18 +258,27 @@ export const CombinationGrid = ({
                             language={language}
                             combination={combination}
                             siteBaseUrl={siteBaseUrl}
-                            handlePreview={handlePreview}
-                            handleExport={handleExport}
+                            isLoading={isLoading}
                             mapping={mapping}
                             selectedBrand={selectedBrand}
                             selectedProduct={selectedProduct}
                             emailParams={emailParams}
-                            isLoading={isLoading}
                             toast={toast}
                             optimoveApi={optimoveApi}
-                            resolveEmailId={resolveEmailId}
+                            resolveEmailId={(list, email) => resolveEmailId(list, email)}
+                            onPreview={handlePreview}
+                            onExport={async (req) => { await handleExport(req); }}
                           />
                         ))}
+
+                        <PreviewDrawer
+                          open={previewOpen}
+                          onClose={() => setPreviewOpen(false)}
+                          itemId={previewItemId}
+                          lang={previewLang}
+                          siteBaseUrl={siteBaseUrl}
+                        />
+
                       </div>
                     </div>
                   )}
@@ -328,5 +289,7 @@ export const CombinationGrid = ({
         );
       })}
     </div>
+
+    
   );
 };

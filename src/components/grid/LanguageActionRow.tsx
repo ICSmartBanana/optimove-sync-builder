@@ -1,33 +1,50 @@
-import { useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Eye, Upload } from "lucide-react";
-import { useInView } from "@/hooks/useInView";
-import { usePreviewHtml } from "@/hooks/usePreviewHtml";
+import { useState, useEffect, useMemo } from 'react';
+import { Brand, CombinationGridRow, EmailAddress, EmailParametersResponse, ExportRequest, Language, Mapping, Product } from '@/types/optimove';
+import { optimoveApi } from '@/services/optimoveApi';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Eye,
+  Upload,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Globe,
+  Calendar,
+  Package
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useInView } from '@/hooks/useInView';
 
-export function LanguageActionRow({
-  language,
-  combination,
-  siteBaseUrl,
-  handlePreview,
-  handleExport,
-  mapping,
-  selectedBrand,
-  selectedProduct,
-  emailParams,
-  isLoading,
-  toast,
-  optimoveApi,
-  resolveEmailId
+export function LanguageActionRow(props: {
+  language: Language;
+  combination: CombinationGridRow;
+  siteBaseUrl: string;
+  isLoading: boolean;
+  mapping: Mapping | null;
+  selectedBrand: Brand | null;
+  selectedProduct: Product | null;
+  emailParams: EmailParametersResponse | null;
+  toast: ReturnType<typeof useToast>['toast'];
+  optimoveApi: typeof optimoveApi;
+  resolveEmailId: (list: EmailAddress[], email: string) => number;
+  onPreview: (itemId: string, languageCode: string) => void;
+  onExport: (req: ExportRequest) => Promise<void>;
 }) {
-  const { ref, inView } = useInView<HTMLDivElement>("600px");
+  const {
+    language, combination, siteBaseUrl, isLoading,
+    mapping, selectedBrand, selectedProduct, emailParams,
+    toast, optimoveApi, resolveEmailId, onPreview, onExport
+  } = props;
 
-  // Prefetch when in view
-  useEffect(() => {
-    if (inView) {
-      usePreviewHtml(siteBaseUrl, combination.mailingItem.id, language.code);
-    }
-  }, [inView, siteBaseUrl, combination.mailingItem.id, language.code]);
+  // Stable hook calls:
+  const { ref, inView } = useInView<HTMLDivElement>('600px');
+
+  // Prefetch by toggling the input; NEVER call this conditionally
+  //usePreviewHtml(siteBaseUrl, inView ? combination.mailingItem.id : '', language.code);
 
   return (
     <div
@@ -38,14 +55,16 @@ export function LanguageActionRow({
         <Badge variant="outline" className="font-mono text-xs">
           {language.code}
         </Badge>
-        <span className="text-sm font-medium">{language.displayName}</span>
+        <span className="text-sm font-medium">
+          {language.displayName}
+        </span>
       </div>
 
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handlePreview(combination.mailingItem.id, language.code)}
+          onClick={() => onPreview(combination.mailingItem.id, language.code)}
           className="h-8 text-xs"
         >
           <Eye className="h-3 w-3 mr-1" />
@@ -58,9 +77,9 @@ export function LanguageActionRow({
           onClick={async () => {
             if (!mapping || !selectedBrand || !selectedProduct) {
               toast({
-                variant: "destructive",
-                title: "Missing configuration",
-                description: "Brand, product or mapping config not available."
+                variant: 'destructive',
+                title: 'Missing configuration',
+                description: 'Brand, product or mapping config not available.'
               });
               return;
             }
@@ -70,13 +89,13 @@ export function LanguageActionRow({
               language.code
             );
 
-            await handleExport({
+            await onExport({
               mailingItemId: combination.mailingItem.id,
-              templateName: combination.mailingItem.name + " | " + language.code,
+              templateName: combination.mailingItem.name + ' | ' + language.code,
               subject: combination.mailingItem.name,
-              html: html,
-              plainText: "...",
-              fromName: "CMS WIP",
+              html,
+              plainText: '...',
+              fromName: 'CMS WIP',
               replyToAddressID: resolveEmailId(
                 emailParams?.ReplyToAddresses || [],
                 combination.mailingItem.replyToAddress
