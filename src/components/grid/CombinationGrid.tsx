@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Brand, CombinationGridRow, EmailAddress, EmailParametersResponse, ExportRequest, Language, Mapping, Product } from '@/types/optimove';
 import { optimoveApi } from '@/services/optimoveApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,18 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { 
-  Eye, 
-  Upload, 
-  Trash2, 
-  ChevronDown, 
-  ChevronRight, 
-  Globe, 
+import {
+  Eye,
+  Upload,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Globe,
   Calendar,
   Package,
   ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useInView } from '@/hooks/useInView';
+import { usePreviewHtml } from '@/hooks/usePreviewHtml';
+import { LanguageActionRow } from './LanguageActionRow';
 
 interface CombinationGridProps {
   combinations: CombinationGridRow[];
@@ -49,6 +52,10 @@ export const CombinationGrid = ({
   const [availableLanguages, setAvailableLanguages] = useState<Record<string, Language[]>>({});
   const [loadingLanguages, setLoadingLanguages] = useState<Record<string, boolean>>({});
   const [emailParams, setEmailParams] = useState<EmailParametersResponse | null>(null);
+  const siteBaseUrl = useMemo(() => (import.meta as any).env.VITE_CMS_BASE_URL as string, []);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItemId, setPreviewItemId] = useState<string | undefined>(undefined);
+  const [previewLang, setPreviewLang] = useState<string>('en');
 
   // Load available languages for each mailing item
   useEffect(() => {
@@ -58,9 +65,9 @@ export const CombinationGrid = ({
           setLoadingLanguages(prev => ({ ...prev, [combo.mailingItem.id]: true }));
           try {
             const languages = await optimoveApi.getLanguages(combo.mailingItem.id);
-            setAvailableLanguages(prev => ({ 
-              ...prev, 
-              [combo.mailingItem.id]: languages 
+            setAvailableLanguages(prev => ({
+              ...prev,
+              [combo.mailingItem.id]: languages
             }));
           } catch (error) {
             console.error(`Failed to load languages for ${combo.mailingItem.id}:`, error);
@@ -107,8 +114,10 @@ export const CombinationGrid = ({
   };
 
   const handlePreview = (itemId: string, languageCode: string) => {
-    const url = onConstructPreviewUrl(itemId, languageCode);
-    window.open(url, '_blank');
+    // Open the in-app sliding drawer instead of a new tab
+    setPreviewItemId(itemId);
+    setPreviewLang(languageCode);
+    setPreviewOpen(true);
   };
 
   const resolveEmailId = (emailList: EmailAddress[], email: string): number => {
@@ -165,7 +174,7 @@ export const CombinationGrid = ({
       {combinations.map((combination, index) => {
         const itemLanguages = availableLanguages[combination.mailingItem.id] || [];
         const isLoadingLangs = loadingLanguages[combination.mailingItem.id];
-        
+
         return (
           <Card key={combination.id} className="border border-card-border shadow-sm">
             <CardHeader className="pb-3">
@@ -183,7 +192,7 @@ export const CombinationGrid = ({
                       <ChevronRight className="h-4 w-4" />
                     )}
                   </Button>
-                  
+
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium bg-muted text-muted-foreground px-2 py-1 rounded">
@@ -193,7 +202,7 @@ export const CombinationGrid = ({
                         {combination.mailingItem.name}
                       </CardTitle>
                     </div>
-                    
+
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                       <span className="font-mono">ID: {combination.mailingItem.id}</span>
                       <div className="flex items-center gap-1">
@@ -213,7 +222,7 @@ export const CombinationGrid = ({
                   <Badge variant="secondary" className="text-xs">
                     {combination.selectedLanguages.length} language{combination.selectedLanguages.length !== 1 ? 's' : ''}
                   </Badge>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -235,7 +244,7 @@ export const CombinationGrid = ({
                       <Globe className="h-4 w-4" />
                       Available Languages
                     </Label>
-                    
+
                     {isLoadingLangs ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
@@ -247,7 +256,7 @@ export const CombinationGrid = ({
                           const isSelected = combination.selectedLanguages.some(
                             l => l.code === language.code
                           );
-                          
+
                           return (
                             <div
                               key={language.code}
@@ -256,12 +265,12 @@ export const CombinationGrid = ({
                               <Checkbox
                                 id={`${combination.id}_${language.code}`}
                                 checked={isSelected}
-                                onCheckedChange={(checked) => 
+                                onCheckedChange={(checked) =>
                                   handleLanguageToggle(combination.id, language, checked as boolean)
                                 }
                                 disabled={isLoading}
                               />
-                              <Label 
+                              <Label
                                 htmlFor={`${combination.id}_${language.code}`}
                                 className="flex-1 cursor-pointer text-sm"
                               >
@@ -292,77 +301,22 @@ export const CombinationGrid = ({
                       <Label className="text-sm font-medium">Actions per Language</Label>
                       <div className="space-y-2">
                         {combination.selectedLanguages.map((language) => (
-                          <div
+                          <LanguageActionRow
                             key={language.code}
-                            className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-secondary"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline" className="font-mono text-xs">
-                                {language.code}
-                              </Badge>
-                              <span className="text-sm font-medium">
-                                {language.displayName}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePreview(combination.mailingItem.id, language.code)}
-                                className="h-8 text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Preview
-                                <ExternalLink className="h-3 w-3 ml-1" />
-                              </Button>
-                              
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={async () =>{
-                                    if (!mapping || !selectedBrand || !selectedProduct) {
-                                      toast({
-                                        variant: 'destructive',
-                                        title: 'Missing configuration',
-                                        description: 'Brand, product or mapping config not available.'
-                                      });
-                                      return;
-                                    }
-
-                                    const html = await optimoveApi.getMailingHtml(combination.mailingItem.id, language.code);
-                                    
-                                    console.log("🧩 Combination Object:", combination);
-                                    console.log("🗂️ Mapping Object:", mapping);
-                                    console.log("📨 Email Parameters:", emailParams);
-                                    await handleExport({
-                                      mailingItemId: combination.mailingItem.id,
-                                      templateName: combination.mailingItem.name + " | " + language.code, // 👈 populate all required fields
-                                      subject: combination.mailingItem.name,//combination.mailingItem.subject ---> Remove this after implementing value replacers.
-                                      html: html,
-                                      plainText: "...",
-                                      fromName: "CMS WIP",
-                                      replyToAddressID: resolveEmailId(emailParams?.ReplyToAddresses || [], combination.mailingItem.replyToAddress),
-                                      fromEmailAddressID: resolveEmailId(emailParams?.FromEmailAddresses || [], combination.mailingItem.fromAddress),
-                                      folderID: mapping.folderId,//</div></div>mapping.folderId,
-                                      brandId: mapping.optimoveBrandId,//</div>mapping.optimoveBrandId,
-                                      language: language.code,
-                                      mailingSite: mapping.mailingSite,
-                                      brandName: mapping.brandCode,
-                                      productName: mapping.productCode,
-                                      mailType: combination.mailingItem.name
-                                    })
-
-                                  }
-                                }
-                                disabled={isLoading}
-                                className="h-8 text-xs"
-                              >
-                                <Upload className="h-3 w-3 mr-1" />
-                                Export
-                              </Button>
-                            </div>
-                          </div>
+                            language={language}
+                            combination={combination}
+                            siteBaseUrl={siteBaseUrl}
+                            handlePreview={handlePreview}
+                            handleExport={handleExport}
+                            mapping={mapping}
+                            selectedBrand={selectedBrand}
+                            selectedProduct={selectedProduct}
+                            emailParams={emailParams}
+                            isLoading={isLoading}
+                            toast={toast}
+                            optimoveApi={optimoveApi}
+                            resolveEmailId={resolveEmailId}
+                          />
                         ))}
                       </div>
                     </div>

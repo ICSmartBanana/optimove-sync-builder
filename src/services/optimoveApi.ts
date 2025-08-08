@@ -3,7 +3,7 @@ import { Brand, Product, Mapping, MailingItem, Language, ExportResponse, ExportR
 // API Service Layer - Easy to swap for real APIs
 export class OptimoveApiService {
 
-  private baseUrl = 'https://cms.test.env.works/sitecore/api/email-export';
+  private baseUrl = 'https://cms.local.env.works/sitecore/api/email-export';
   // In production, replace these with real API calls
    async getBrands(): Promise<string[]> {
   const fullUrl = `${this.baseUrl}/optimove-mapping/brands`;
@@ -175,7 +175,7 @@ export class OptimoveApiService {
   }
 
   // Utility method to construct preview URL
-  constructPreviewUrl(itemId: string, languageCode: string, sitecoreHost: string = 'https://cms.test.env.works'): string {
+  constructPreviewUrl(itemId: string, languageCode: string, sitecoreHost: string = 'https://cms.local.env.works'): string {
     return `${sitecoreHost}/?sc_itemid=${itemId}&sc_lang=${languageCode}&sc_mode=preview&mailExportMode=true`;
   }
 
